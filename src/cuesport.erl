@@ -22,8 +22,8 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/4,
-         start_link/5,
+-export([start_link/5,
+         start_link/6,
          get_worker/1]).
 
 %% Supervisor callbacks
@@ -38,15 +38,15 @@
 %%% API functions
 %%%===================================================================
 
--spec start_link(atom(), integer(), [atom()], {atom(), atom(), [term()]}) ->
+-spec start_link(atom(), integer(), [atom()], {atom(), atom()}, [term()]) ->
         {ok, pid()} | ignore | {error, term()}.
-start_link(PoolName, PoolSize, ChildMods, ChildMFA) ->
-    start_link(PoolName, PoolSize, 2*PoolSize, ChildMods, ChildMFA).
+start_link(PoolName, PoolSize, ChildMods, ChildMF, ChildArgs) ->
+    start_link(PoolName, PoolSize, 2*PoolSize, ChildMods, ChildMF, ChildArgs).
 
--spec start_link(atom(), integer(), integer(), [atom()], {atom(), atom(), [term()]}) ->
+-spec start_link(atom(), integer(), integer(), [atom()], {atom(), atom()}, [term()]) ->
         {ok, pid()} | ignore | {error, term()}.
-start_link(PoolName, PoolSize, MaxRestarts, ChildMods, ChildMFA) ->
-    Args = [PoolName, PoolSize, MaxRestarts, ChildMods, ChildMFA],
+start_link(PoolName, PoolSize, MaxRestarts, ChildMods, ChildMF, ChildArgs) ->
+    Args = [PoolName, PoolSize, MaxRestarts, ChildMods, ChildMF, ChildArgs],
     SupName = list_to_atom("cuesport_" ++ atom_to_list(PoolName) ++ "_sup"),
     supervisor:start_link({local, SupName}, ?MODULE, Args).
 
@@ -60,17 +60,19 @@ get_worker(PoolName) ->
 %%%===================================================================
 %%% Supervisor callbacks
 %%%===================================================================
-
-init([PoolName, PoolSize, MaxRestarts, ChildMods, ChildMFA]) ->
+init([PoolName, PoolSize, MaxRestarts, ChildMods, {ChildM, ChildA}, {for_all, ChildArgs}]) ->
+    ChildArgs2 = lists:duplicate(PoolSize, ChildArgs),
+    init([PoolName, PoolSize, MaxRestarts, ChildMods, {ChildM, ChildA}, ChildArgs2]);
+init([PoolName, PoolSize, MaxRestarts, ChildMods, {ChildM, ChildA}, ChildArgs]) ->
     PoolTable = ets:new(PoolName, [named_table, public]),
     ets:insert(PoolTable, {pool_size, PoolSize}),
     ets:insert(PoolTable, {seq, 0}),
 
-    MFA = fun(Id) ->
-            {?MODULE, start_worker, [Id, PoolTable, ChildMFA]}
+    MFA = fun(Id, Args) ->
+            {?MODULE, start_worker, [Id, PoolTable, {ChildM, ChildA, Args}]}
     end,
-    Children = [{N, MFA(N), transient, 2000, worker, ChildMods}
-        || N <- lists:seq(1, PoolSize)],
+    Children = [{N, MFA(N, Args), transient, 2000, worker, ChildMods}
+        || {N, Args} <- lists:zip(lists:seq(1, PoolSize), ChildArgs)],
 
     {ok, {{one_for_one, MaxRestarts, PoolSize}, Children}}.
 

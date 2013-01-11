@@ -25,8 +25,8 @@ start_link() ->
     PoolSize = get_config(redis_pool_size),
     EredisOpts = get_config(redis_worker_config),
     ChildMods = [eredis, eredis_client, eredis_parser],
-    ChildMFA = {eredis, start_link, EredisOpts},
-    cuesport:start_link(?POOL_NAME, PoolSize, ChildMods, ChildMFA).
+    ChildMF = {eredis, start_link},
+    cuesport:start_link(?POOL_NAME, PoolSize, ChildMods, ChildMF, {for_all, EredisOpts}).
 
 q(Query) ->
     eredis:q(cuesport:get_worker(?POOL_NAME), Query).
