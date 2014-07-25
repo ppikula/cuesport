@@ -71,7 +71,7 @@ init([PoolName, PoolSize, MaxRestarts, ChildMods, {ChildM, ChildA}, ChildArgs]) 
     MFA = fun(Id, Args) ->
             {?MODULE, start_worker, [Id, PoolTable, {ChildM, ChildA, Args}]}
     end,
-    Children = [{N, MFA(N, Args), transient, 2000, worker, ChildMods}
+    Children = [{N, MFA(N, Args), permanent, 2000, worker, ChildMods}
         || {N, Args} <- lists:zip(lists:seq(1, PoolSize), ChildArgs)],
 
     {ok, {{one_for_one, MaxRestarts, PoolSize}, Children}}.
