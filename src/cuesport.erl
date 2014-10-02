@@ -53,7 +53,7 @@ start_link(PoolName, PoolSize, MaxRestarts, ChildMods, ChildMF, ChildArgs) ->
 -spec get_worker(atom()) -> pid().
 get_worker(PoolName) ->
     [{pool_size, PoolSize}] = ets:lookup(PoolName, pool_size),
-    N = ets:update_counter(PoolName, seq, {2, 1, PoolSize, 1}),
+    N = erlang:phash2({self(),os:timestamp()}, PoolSize) +1,
     [{N, Worker}] = ets:lookup(PoolName, N),
     Worker.
 
@@ -64,7 +64,7 @@ init([PoolName, PoolSize, MaxRestarts, ChildMods, {ChildM, ChildA}, {for_all, Ch
     ChildArgs2 = lists:duplicate(PoolSize, ChildArgs),
     init([PoolName, PoolSize, MaxRestarts, ChildMods, {ChildM, ChildA}, ChildArgs2]);
 init([PoolName, PoolSize, MaxRestarts, ChildMods, {ChildM, ChildA}, ChildArgs]) ->
-    PoolTable = ets:new(PoolName, [named_table, public]),
+    PoolTable = ets:new(PoolName, [named_table, public, {read_concurrency, true}]),
     ets:insert(PoolTable, {pool_size, PoolSize}),
     ets:insert(PoolTable, {seq, 0}),
 
