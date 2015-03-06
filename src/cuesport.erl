@@ -34,16 +34,18 @@
 
 -define(SERVER, ?MODULE).
 
+-type child_args() :: [term()] | {for_all, [term()]}.
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
 
--spec start_link(atom(), integer(), [atom()], {atom(), atom()}, [term()]) ->
+-spec start_link(atom(), non_neg_integer(), [atom()], {atom(), atom()},child_args()) ->
         {ok, pid()} | ignore | {error, term()}.
 start_link(PoolName, PoolSize, ChildMods, ChildMF, ChildArgs) ->
     start_link(PoolName, PoolSize, 2*PoolSize, ChildMods, ChildMF, ChildArgs).
 
--spec start_link(atom(), integer(), integer(), [atom()], {atom(), atom()}, [term()]) ->
+-spec start_link(atom(), non_neg_integer(), integer(), [atom()], {atom(), atom()}, child_args()) ->
         {ok, pid()} | ignore | {error, term()}.
 start_link(PoolName, PoolSize, MaxRestarts, ChildMods, ChildMF, ChildArgs) ->
     Args = [PoolName, PoolSize, MaxRestarts, ChildMods, ChildMF, ChildArgs],
